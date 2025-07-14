@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="az">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turizy Admin Panel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="admin-container">
+        <!-- Yan menyu -->
+        <aside class="sidebar">
+            <button class="close-btn" id="sidebarClose">&times;</button>
+            <div class="logo">
+                <h1>Turizy Admin</h1>
+            </div>
+            <nav class="admin-nav">
+                <ul>
+                    <li><a href="#dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="#tours"><i class="fas fa-suitcase"></i> Turlar</a></li>
+                    <li><a href="#bookings"><i class="fas fa-calendar-check"></i> Rezervasiyalar</a></li>
+                    <li><a href="#users"><i class="fas fa-users"></i> İstifadəçilər</a></li>
+                    <li><a href="#reviews"><i class="fas fa-star"></i> Rəylər</a></li>
+                    <li><a href="#settings"><i class="fas fa-cog"></i> Tənzimləmələr</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Əsas hissə -->
+        <main class="admin-content">
+            <header class="admin-header">
+                <button class="hamburger" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+        
+                <div class="search-bar">
+                    <input type="text" placeholder="Axtarış...">
+                    <button><i class="fas fa-search"></i></button>
+                </div>
+                <div class="user-actions">
+                    <div class="notification">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge">5</span>
+                    </div>
+                    <div class="user-profile">
+                        <img src="./images/profile.jpg" alt="Admin">
+                        <span>Admin</span>
+                    </div>
+                </div>
+            </header>
+
+            <section id="dashboard" class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-line"></i> Dashboard</h2>
+                </div>
+
+                <!-- Statistik kartlar -->
+                <div class="stats-cards">
+                    <div class="card">
+                        <h3 id="totalTours">0</h3>
+                        <p>Turlar</p>
+                    </div>
+                    <div class="card">
+                        <h3 id="totalBookings">0</h3>
+                        <p>Rezervasiyalar</p>
+                    </div>
+                    <div class="card">
+                        <h3 id="totalUsers">0</h3>
+                        <p>İstifadəçilər</p>
+                    </div>
+                    <div class="card">
+                        <h3 id="totalReviews">0</h3>
+                        <p>Rəylər</p>
+                    </div>
+                </div>
+
+                <!-- Son rezervasiyalar -->
+                <div class="recent-section">
+                    <h3>Son Rezervasiyalar</h3>
+                    <ul id="recentBookingsList"></ul>
+                </div>
+
+                <!-- Son turlar -->
+                <div class="recent-section">
+                    <h3>Son Turlar</h3>
+                    <ul id="recentToursList"></ul>
+                </div>
+            </section>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    // Naviqasiyanı işlət
+                    const links = document.querySelectorAll('.admin-nav a');
+                    const sections = document.querySelectorAll('main > section');
+
+                    links.forEach(link => {
+                        link.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const target = link.getAttribute('href').substring(1);
+
+                            // Bütün bölmələri gizlət
+                            sections.forEach(section => {
+                                section.style.display = (section.id === target) ? 'block' : 'none';
+                            });
+
+                            // Aktiv link rəngi
+                            links.forEach(l => l.classList.remove('active'));
+                            link.classList.add('active');
+                        });
+                    });
+
+                    //  İlk dəfə açanda yalnız dashboard görünsün
+                    sections.forEach(section => {
+                        section.style.display = (section.id === 'dashboard') ? 'block' : 'none';
+                    });
+
+                    //  Dashboard statistikası
+                    const tourRows = document.querySelectorAll('#tours table.data-table tbody tr');
+                    document.getElementById('totalTours').textContent = tourRows.length;
+
+                    const bookingRows = document.querySelectorAll('#bookings table.data-table tbody tr');
+                    document.getElementById('totalBookings').textContent = bookingRows.length;
+
+                    const userRows = document.querySelectorAll('#users table.data-table tbody tr');
+                    document.getElementById('totalUsers').textContent = userRows.length;
+
+                    const reviewRows = document.querySelectorAll('#reviews table.data-table tbody tr');
+                    document.getElementById('totalReviews').textContent = reviewRows.length;
+
+                    // Son rezervasiyalar
+                    const recentBookings = document.getElementById('recentBookingsList');
+                    Array.from(bookingRows).slice(-5).forEach(row => {
+                        const tourName = row.children[1].textContent;
+                        const customer = row.children[2].textContent;
+                        const date = row.children[3].textContent;
+                        const li = document.createElement('li');
+                        li.textContent = `${date} - ${tourName} (${customer})`;
+                        recentBookings.appendChild(li);
+                    });
+
+                    // Son turlar
+                    const recentTours = document.getElementById('recentToursList');
+                    Array.from(tourRows).slice(-5).forEach(row => {
+                        const name = row.children[2].textContent;
+                        const location = row.children[3].textContent;
+                        const price = row.children[5].textContent;
+                        const li = document.createElement('li');
+                        li.textContent = `${name} - ${location} - ${price}`;
+                        recentTours.appendChild(li);
+                    });
+
+                    //  Axtarış funksiyası
+                    const searchInput = document.querySelector('.search-bar input');
+                    searchInput.addEventListener('input', () => {
+                        const searchTerm = searchInput.value.toLowerCase();
+
+                        sections.forEach(section => {
+                            const rows = section.querySelectorAll('table.data-table tbody tr');
+                            rows.forEach(row => {
+                                if (!searchTerm) {
+                                    row.style.display = '';
+                                    return;
+                                }
+
+                                const match = Array.from(row.children).some(cell =>
+                                    cell.textContent.toLowerCase().includes(searchTerm)
+                                );
+
+                                row.style.display = match ? '' : 'none';
+                            });
+                        });
+                    });
+                });
+
+            </script>
+
+
+            <section id="tours" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-suitcase"></i> Turlar</h2>
+                    <button class="btn btn-primary" id="addTourBtn">
+                        <i class="fas fa-plus"></i> Yeni Tur Əlavə Et
+                    </button>
+                    <button class="btn btn-secondary" id="aiToursBtn">
+                        <i class="fas fa-robot"></i> AI Planlanmış Turlar
+                    </button>
+                    <button class="btn btn-secondary" id="manageCategoriesBtn">
+                        <i class="fas fa-tags"></i> Kateqoriyaları İdarə Et
+                    </button>
+                </div>
+
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="tourCategory">Kateqoriya:</label>
+                        <select id="tourCategory">
+                            <option value="all">Hamısı</option>
+                            <option value="adventure">Macəra</option>
+                            <option value="cultural">Mədəniyyət</option>
+                            <option value="beach">Çimərlik</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="tourStatus">Status:</label>
+                        <select id="tourStatus">
+                            <option value="all">Hamısı</option>
+                            <option value="active">Aktiv</option>
+                            <option value="inactive">Qeyri-aktiv</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <input type="text" id="tourSearch" placeholder="Axtarış...">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Şəkil</th>
+                                <th>Ad</th>
+                                <th>Məkan</th>
+                                <th>Müddət</th>
+                                <th>Qiymət</th>
+                                <th>Status</th>
+                                <th>Əməliyyatlar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td><img src="./images/tour1.jpg" class="table-image"></td>
+                                <td>Qəbələ Macərası</td>
+                                <td>Qəbələ</td>
+                                <td>3 gün</td>
+                                <td>120 AZN</td>
+                                <td><span class="badge active">Aktiv</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-edit"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-sm btn-delete"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                            <!-- Digər turlar -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <button class="page-btn"><i class="fas fa-chevron-left"></i></button>
+                    <button class="page-btn active">1</button>
+                    <button class="page-btn">2</button>
+                    <button class="page-btn">3</button>
+                    <button class="page-btn"><i class="fas fa-chevron-right"></i></button>
+                </div>
+
+                <!-- Yeni Tur Əlavə Et Modalı -->
+                <div id="addTourModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h3>Yeni Tur Əlavə Et</h3>
+                        <form id="addTourForm">
+                            <input type="text" placeholder="Tur Adı" required>
+                            <textarea placeholder="Təsviri"></textarea>
+                            <input type="file" multiple>
+                            <input type="text" placeholder="Məkan">
+                            <input type="number" placeholder="Müddət (gün)">
+                            <input type="number" placeholder="Qiymət">
+                            <select>
+                                <option value="active">Aktiv</option>
+                                <option value="inactive">Qeyri-aktiv</option>
+                            </select>
+                            <select>
+                                <option>Macəra</option>
+                                <option>Mədəniyyət</option>
+                                <option>Çimərlik</option>
+                            </select>
+                            <textarea placeholder="Tur Proqramı (gün-gün)"></textarea>
+                            <button type="submit" class="btn btn-primary">Yadda saxla</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Redaktə Et Modalı -->
+                <div id="editTourModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h3>Tur Redaktə Et</h3>
+                        <form id="editTourForm">
+                            <!-- Eyni sahələr -->
+                            <input type="text" placeholder="Tur Adı" required>
+                            <textarea placeholder="Təsviri"></textarea>
+                            <input type="file" multiple>
+                            <input type="text" placeholder="Məkan">
+                            <input type="number" placeholder="Müddət (gün)">
+                            <input type="number" placeholder="Qiymət">
+                            <select>
+                                <option value="active">Aktiv</option>
+                                <option value="inactive">Qeyri-aktiv</option>
+                            </select>
+                            <select>
+                                <option>Macəra</option>
+                                <option>Mədəniyyət</option>
+                                <option>Çimərlik</option>
+                            </select>
+                            <textarea placeholder="Tur Proqramı (gün-gün)"></textarea>
+                            <button type="submit" class="btn btn-primary">Yenilə</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Kateqoriyalar İdarəetmə Modalı -->
+                <div id="categoriesModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h3>Kateqoriyaları İdarə Et</h3>
+                        <ul id="categoryList">
+                            <li>Macəra <button class="btn btn-sm btn-delete">Sil</button></li>
+                            <li>Mədəniyyət <button class="btn btn-sm btn-delete">Sil</button></li>
+                            <li>Çimərlik <button class="btn btn-sm btn-delete">Sil</button></li>
+                        </ul>
+                        <input type="text" id="newCategoryInput" placeholder="Yeni Kateqoriya">
+                        <button class="btn btn-primary" id="addCategoryBtn">Əlavə Et</button>
+                    </div>
+                </div>
+
+                <!-- AI Turlar Siyahısı Modalı -->
+                <div id="aiToursModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h3>AI Planlanmış Turlar</h3>
+                        <ul>
+                            <li>AI Tur 1 - 5 gün - 200 AZN</li>
+                            <li>AI Tur 2 - 3 gün - 150 AZN</li>
+                            <li>AI Tur 3 - 6 gün - 200 AZN</li>
+                            <li>AI Tur 4 - 8 gün - 250 AZN</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Silmə Təsdiqləmə Modalı -->
+                <div id="deleteConfirmModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h3>Silinməni Təsdiqlə</h3>
+                        <p>Bu turu silmək istədiyinizə əminsiniz?</p>
+                        <button class="btn btn-danger" id="confirmDeleteBtn">Bəli, sil</button>
+                        <button class="btn btn-secondary close">İmtina et</button>
+                    </div>
+                </div>
+            </section>
+
+
+            <section id="bookings" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-calendar-check"></i> Rezervasiyalar</h2>
+                    <button class="btn btn-primary" id="addBookingBtn">
+                        <i class="fas fa-plus"></i> Yeni Rezervasiya Əlavə Et
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table" id="bookingTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Tur Adı</th>
+                                <th>Müştəri</th>
+                                <th>Tarix</th>
+                                <th>Adam sayı</th>
+                                <th>Status</th>
+                                <th>Əməliyyatlar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Qəbələ Macərası</td>
+                                <td>Rəsul Şükürov</td>
+                                <td>2025-07-15</td>
+                                <td>2 nəfər</td>
+                                <td><span class="badge active">Təsdiq olunub</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-edit"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-sm btn-delete"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Yeni Rezervasiya Modalı -->
+                <div id="addBookingModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h3>Yeni Rezervasiya Əlavə Et</h3>
+                        <form id="addBookingForm">
+                            <label for="bookingTour">Tur:</label>
+                            <select id="bookingTour" required>
+                                <option value="">Seçin</option>
+                                <option value="Qəbələ Macərası">Qəbələ Macərası</option>
+                                <option value="Bakı Şəhər Gəzintisi">Bakı Şəhər Gəzintisi</option>
+                                <option value="Şəki Tarixi Səyahət">Şəki Tarixi Səyahət</option>
+                            </select>
+
+                            <label for="bookingCustomer">Müştəri adı:</label>
+                            <input type="text" id="bookingCustomer" placeholder="Müştəri adı" required>
+
+                            <label for="bookingDate">Tarix:</label>
+                            <input type="date" id="bookingDate" required>
+
+                            <label for="bookingPeople">Adam sayı:</label>
+                            <input type="number" id="bookingPeople" min="1" value="1" required>
+
+                            <label for="bookingStatus">Status:</label>
+                            <select id="bookingStatus">
+                                <option value="confirmed">Təsdiq olunub</option>
+                                <option value="pending">Gözləyir</option>
+                                <option value="cancelled">Ləğv olunub</option>
+                            </select>
+
+                            <button type="submit" class="btn btn-primary">Yadda saxla</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Redaktə Modalı -->
+                <div id="editBookingModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h3>Rezervasiyanı Redaktə Et</h3>
+                        <form id="editBookingForm">
+                            <input type="hidden" id="editBookingId">
+                            <label for="editBookingTour">Tur:</label>
+                            <select id="editBookingTour" required>
+                                <option value="">Seçin</option>
+                                <option value="Qəbələ Macərası">Qəbələ Macərası</option>
+                                <option value="Bakı Şəhər Gəzintisi">Bakı Şəhər Gəzintisi</option>
+                                <option value="Şəki Tarixi Səyahət">Şəki Tarixi Səyahət</option>
+                            </select>
+
+                            <label for="editBookingCustomer">Müştəri adı:</label>
+                            <input type="text" id="editBookingCustomer" placeholder="Müştəri adı" required>
+
+                            <label for="editBookingDate">Tarix:</label>
+                            <input type="date" id="editBookingDate" required>
+
+                            <label for="editBookingPeople">Adam sayı:</label>
+                            <input type="number" id="editBookingPeople" min="1" required>
+
+                            <label for="editBookingStatus">Status:</label>
+                            <select id="editBookingStatus">
+                                <option value="confirmed">Təsdiq olunub</option>
+                                <option value="pending">Gözləyir</option>
+                                <option value="cancelled">Ləğv olunub</option>
+                            </select>
+
+                            <button type="submit" class="btn btn-primary">Yenilə</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Silmə Təsdiqləmə Modalı -->
+                <div id="deleteConfirmModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h3>Silinməni Təsdiqlə</h3>
+                        <p>Bu rezervasiyanı silmək istədiyinizə əminsiniz?</p>
+                        <button class="btn btn-danger" id="confirmDeleteBtn">Bəli, sil</button>
+                        <button class="btn btn-secondary close">İmtina et</button>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="users" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-users"></i> İstifadəçilər</h2>
+                    <button class="btn btn-primary" id="addUserBtn">
+                        <i class="fas fa-plus"></i> Yeni İstifadəçi Əlavə Et
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Ad</th>
+                                <th>Email</th>
+                                <th>Telefon</th>
+                                <th>Rolu</th>
+                                <th>Əməliyyatlar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Rəsul Şükürov</td>
+                                <td>rasul@example.com</td>
+                                <td>+994 50 123 45 67</td>
+                                <td>Admin</td>
+                                <td>
+                                    <button class="btn btn-sm btn-edit"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-sm btn-delete"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="reviews" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-star"></i> Rəylər</h2>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Tur</th>
+                                <th>İstifadəçi</th>
+                                <th>Reytinq</th>
+                                <th>Şərh</th>
+                                <th>Status</th>
+                                <th>Əməliyyatlar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Qəbələ Macərası</td>
+                                <td>Rəsul Şükürov</td>
+                                <td>5/5</td>
+                                <td>Əla təcrübə idi!</td>
+                                <td><span class="badge active">Görünür</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-edit"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-sm btn-delete"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="settings" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-cog"></i> Tənzimləmələr</h2>
+                </div>
+
+                <div class="settings-form">
+                    <form>
+                        <div class="form-group">
+                            <label for="siteTitle">Sayt Başlığı:</label>
+                            <input type="text" id="siteTitle" placeholder="Turizy Admin Paneli">
+                        </div>
+                        <div class="form-group">
+                            <label for="adminEmail">Admin Email:</label>
+                            <input type="email" id="adminEmail" placeholder="admin@turizy.az">
+                        </div>
+                        <div class="form-group">
+                            <label for="defaultCurrency">Valyuta:</label>
+                            <select id="defaultCurrency">
+                                <option value="AZN">AZN</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Yadda saxla
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const form = document.querySelector('#settings form');
+                    const siteTitleInput = document.getElementById('siteTitle');
+                    const adminEmailInput = document.getElementById('adminEmail');
+                    const currencySelect = document.getElementById('defaultCurrency');
+
+                    // LocalStorage-dan dəyərləri yüklə və inputlara qoy
+                    const savedSettings = JSON.parse(localStorage.getItem('siteSettings')) || {};
+                    if (savedSettings.siteTitle) siteTitleInput.value = savedSettings.siteTitle;
+                    if (savedSettings.adminEmail) adminEmailInput.value = savedSettings.adminEmail;
+                    if (savedSettings.defaultCurrency) currencySelect.value = savedSettings.defaultCurrency;
+
+                    // Form submit olanda LocalStorage-a yaz
+                    form.addEventListener('submit', (e) => {
+                        e.preventDefault();
+
+                        const newSettings = {
+                            siteTitle: siteTitleInput.value.trim(),
+                            adminEmail: adminEmailInput.value.trim(),
+                            defaultCurrency: currencySelect.value
+                        };
+
+                        localStorage.setItem('siteSettings', JSON.stringify(newSettings));
+
+                        alert('Tənzimləmələr yadda saxlanıldı ✅');
+                    });
+                });
+            </script>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
